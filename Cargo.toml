@@ -1,0 +1,14 @@
+[package]
+name = "fenny"
+version = "0.1.0"
+edition = "2021"
+authors = ["Rickard Norlander"]
+readme = "README.md"
+description = "A library for working with Fenwick trees"
+repository = "https://github.com/rickardnorlander/fenny/"
+license = "BSD-2-Clause"
+keywords = ["fenwick", "binary", "prefix", "arithmetic-coding"]
+categories = ["data-structures"]
+
+[badges]
+maintenance = { status = "experimental" }
