@@ -6,7 +6,7 @@ Trees (BIT). They are a data structure that can efficiently (as in
 
 ```rust
 a[i] += x;
-[..=i].sum()
+a[..=i].sum()
 ```
 
 ## Caveat emptor
@@ -33,7 +33,7 @@ fenny::psum(&tree, 5);  // Returns 27.
 
 There's also `O(log n)` time binary search. Pretty useful when doing
 arithmetic coding. Faster than the naive version of wrapping
-fenny::psum with a binary search which would be `O(log^2 n)`
+`fenny::psum` with a binary search which would be `O(log^2 n)`
 
 ```rust
 let root_p1 = fenny::get_root_p1(tree.len());
@@ -76,21 +76,20 @@ let dim = Dim2{y: 5, x: 8};
 let mut tree = vec![0; dim.y * dim.x];
 update_2d(&mut tree, dim , Point2{y: 3, x: 6}, 7);
 // Returns 0
-psum_2d(&tree, dim, Point2{y: 2, x: 6}
+psum_2d(&tree, dim, Point2{y: 2, x: 6});
 // Returns 0
-psum_2d(&tree, dim, Point2{y: 3, x: 5}
+psum_2d(&tree, dim, Point2{y: 3, x: 5});
 // Returns 7
-psum_2d(&tree, dim, Point2{y: 3, x: 6}
+psum_2d(&tree, dim, Point2{y: 3, x: 6});
 // Returns 7
-psum_2d(&tree, dim, Point2{y: 4, x: 7}
+psum_2d(&tree, dim, Point2{y: 4, x: 7});
 ```
 These operations run in `log(dim.x) * log (dim.y) * log (dim.z)`
 
 ## Higher dimension, slope offset, linear
 
-This is an invention of my own that is pretty complicated, so before
-explaining the how's, let's start with the why. Let's say we are doing
-arithmetic coding. We have a probability density function over a
+First a little background. This is something I came up with to help
+with arithmetic coding. We have a probability density function over a
 discretized space. Now to turn this into an efficient encoding, we
 need to map our space to [0, 1), where every cell corresponds to a
 segment with a length proportional to its probability. So lets imagine
@@ -101,25 +100,28 @@ Ok, but one issue. We would like to efficiently manipulate the
 probabilities of the cells, as they exist in 3d space. In particular
 we would like to pick a box with corners (x<sub>0</sub>,
 y<sub>0</sub>, z<sub>0</sub>) and (x<sub>1</sub>, y<sub>1</sub>,
-z<sub>1</sub>), and increase the weight of that box in one swoop. We
-could do range updates in 1d with slope-offset construction, anything
-similar for 3d? Yes there is! Turns out that by having one slope per
-dimension, we can achieve our goal! Also the slope-s need to be
-n-dimensional trees.
+z<sub>1</sub>), and increase the weight of all cells in that box in
+one swoop. We could do range updates in 1d with a slope-offset
+construction, anything similar for 3d? Yes there is! Turns out that by
+having one slope per dimension, we can achieve our goal! This is
+similar to an algorithm by
+[Mishra](https://arxiv.org/abs/1311.6093), but we can get away a
+little cheaper by only suppporting lexicographic queries rather than
+arbitrary boxes.
 
-With that background out of the way, lets show off our operations.
+With that background out of the way, let's look at the operations.
 
 ```rust
 use crate::fenny::*;
-let dim = Dim3{y: 6, x: 8, z: 12};
-let size = dim.x * dim.y * dim.z;
+let dim = Dim3{z: 12, y: 6, x: 8};
+let size = dim.z * dim.y * dim.x;
 let mut slope_z = vec![0; size];
 let mut slope_y = vec![0; size];
 let mut slope_x = vec![0; size];
 let mut offset = vec![0; size];
-let p0 = Point3{x: 1, y: 2, z: 3};
-let p1 = Point3{x: 5, y: 5, z: 7};
-let p2 = Point3{x: 0, y: 0, z: 4};
+let p0 = Point3{z: 3, y: 2, x: 1};
+let p1 = Point3{z: 7, y: 5, x: 5};
+let p2 = Point3{z: 4, y: 0, x: 0};
 // Updates all points q with p0.x<=q.x<=p1.x && p0.y<=q.x<=p1.y && p0.z<=q.x<=p1.z
 so_update_3d_linear(&mut slope_z, &mut slope_y, &mut slope_x, &mut offset, dim, p0, p1, 11);
 // Our points out are laid out in lexicographic order according to z, y, x.
