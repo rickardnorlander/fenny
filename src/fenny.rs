@@ -58,6 +58,24 @@
 
 
 
+// Value type
+
+pub trait Value :
+    Copy
+    + std::default::Default
+    + std::ops::AddAssign
+    + std::ops::Add<Output=Self>
+    + std::iter::Sum
+    + std::ops::Neg<Output=Self>
+    + std::ops::Sub<Output=Self>
+    + std::ops::Mul<Output=Self>
+    + std::cmp::PartialOrd
+{
+    fn from_usize(v: usize) -> Self;
+}
+
+
+
 // Indexing utilities
 
 fn set_least_significant_zero(ind: usize) -> usize {
@@ -87,7 +105,7 @@ fn query_inds(ind: usize) -> impl Iterator<Item=usize> {
 
 // Basic Fenwick tree.
 
-pub fn psum(fenny: &[i64], ind: usize) -> i64 {
+pub fn psum<T: Value>(fenny: &[T], ind: usize) -> T {
     return query_inds(ind).map(|ind| fenny[ind]).sum();
 }
 
@@ -98,7 +116,7 @@ fn update_inds(ind: usize, fenny_len: usize) -> impl Iterator<Item=usize>  {
     });
 }
 
-pub fn update(fenny: &mut [i64], ind: usize, val: i64) {
+pub fn update<T: Value>(fenny: &mut [T], ind: usize, val: T) {
     for ind in update_inds(ind, fenny.len()) {
         fenny[ind] += val;
     }
@@ -130,10 +148,10 @@ impl BSInds {
 }
 
 // Finds the smallest ind so that val < arr[i]
-pub fn first_larger(fenny: &[i64], root_p1: usize, val: i64) -> Option<usize> {
+pub fn first_larger<T: Value>(fenny: &[T], root_p1: usize, val: T) -> Option<usize> {
     let mut inds = BSInds::from_root(root_p1, fenny.len());
     let mut result = None;
-    let mut low_val = 0;
+    let mut low_val = T::default();
     while let Some(ind) = inds.next() {
         let possible = fenny[ind] + low_val;
         if possible <= val {
@@ -150,29 +168,29 @@ pub fn first_larger(fenny: &[i64], root_p1: usize, val: i64) -> Option<usize> {
 
 // Slope-offset Fenwick tree.
 
-pub fn so_update(slope: &mut [i64], offset: &mut [i64], range: std::ops::RangeInclusive<usize>, val:i64) {
+pub fn so_update<T: Value>(slope: &mut [T], offset: &mut [T], range: std::ops::RangeInclusive<usize>, val: T) {
     let (start, end) = (*range.start(), *range.end());
     update(slope, start, val);
     update(slope, end, -val);
-    update(offset, start,  (1 - (start as i64)) * val);
-    update(offset, end,  (end as i64) * val);
+    update(offset, start,  val - val * T::from_usize(start));
+    update(offset, end,  val * T::from_usize(end));
 }
 
-pub fn so_psum(slope: &[i64], offset: &[i64], ind: usize) -> i64 {
-    return psum(slope, ind) * (ind as i64) +
+pub fn so_psum<T: Value>(slope: &[T], offset: &[T], ind: usize) -> T {
+    return psum(slope, ind) * T::from_usize(ind) +
            psum(offset, ind);
 }
 
 // Goal, find the smallest ind so that val < arr[i]
-pub fn so_first_larger(f_slope: &[i64], f_offset: &[i64], root_p1: usize, val: i64) -> Option<usize> {
+pub fn so_first_larger<T: Value>(f_slope: &[T], f_offset: &[T], root_p1: usize, val: T) -> Option<usize> {
     let mut inds = BSInds::from_root(root_p1, f_slope.len());
-    let mut low_offset = 0;
-    let mut low_slope = 0;
+    let mut low_offset = T::default();
+    let mut low_slope = T::default();
     let mut result = None;
     while let Some(ind) = inds.next() {
         let possible_offset = f_offset[ind] + low_offset;
         let possible_slope =  f_slope [ind] + low_slope;
-        let possible = possible_slope * (ind as i64) + possible_offset;
+        let possible = possible_slope * T::from_usize(ind) + possible_offset;
         if possible <= val {
             low_offset = possible_offset;
             low_slope = possible_slope;
@@ -200,8 +218,8 @@ pub struct Point2 {
     pub y: usize,
 }
 
-pub fn psum_2d(fenny: &[i64], dim: Dim2, p: Point2) -> i64 {
-    let mut ret = 0i64;
+pub fn psum_2d<T: Value>(fenny: &[T], dim: Dim2, p: Point2) -> T {
+    let mut ret = T::default();
     for y2 in query_inds(p.y) {
         for x2 in query_inds(p.x) {
             ret += fenny[y2 * dim.x + x2];
@@ -210,7 +228,7 @@ pub fn psum_2d(fenny: &[i64], dim: Dim2, p: Point2) -> i64 {
     return ret;
 }
 
-pub fn update_2d(fenny: &mut [i64], dim: Dim2,  p: Point2, val: i64) {
+pub fn update_2d<T: Value>(fenny: &mut [T], dim: Dim2,  p: Point2, val: T) {
     for y2 in update_inds(p.y, dim.y) {
         for x2 in update_inds(p.x, dim.x) {
             fenny[y2 * dim.x + x2] += val;
@@ -222,28 +240,30 @@ pub fn update_2d(fenny: &mut [i64], dim: Dim2,  p: Point2, val: i64) {
 
 // 2d slope offset trees.
 
-pub fn so_psum_2d_linear(f_slope_y: &[i64], f_slope_x: &[i64], f_offset: &[i64], dim: Dim2, p: Point2) -> i64 {
+pub fn so_psum_2d_linear<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, p: Point2) -> T {
     let s_y = psum_2d(f_slope_y, dim, p);
     let s_x = psum_2d(f_slope_x, dim, p);
     let o = psum_2d(f_offset, dim, p);
 
-    return s_y * (p.y as i64) + s_x * (p.x as i64) + o;
+    return s_y * T::from_usize(p.y) + s_x * T::from_usize(p.x) + o;
 }
 
-fn helper_2d(f_slope: &mut [i64], f_offset: &mut [i64], dim: Dim2, p: Point2, val: i64, ind_: usize, inclusive: bool) {
-    let mut ind = ind_ as i64;
-    if inclusive {
-        ind -= 1;
-    }
+fn helper_2d<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim2, p: Point2, val: T, ind_: usize, inclusive: bool)  {
+    let ind = T::from_usize(ind_);
+    let offset = if inclusive {
+        val - val * ind
+    } else {
+        -val * ind
+    };
     update_2d(f_slope, dim, p, val);
-    update_2d(f_offset, dim, p, -val * ind);
+    update_2d(f_offset, dim, p, offset);
 }
 
-pub fn so_update_2d_linear(f_slope_y: &mut [i64], f_slope_x: &mut [i64], f_offset: &mut [i64], dim: Dim2,
-                           p0: Point2, p1: Point2, val: i64) {
+pub fn so_update_2d_linear<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim2,
+                           p0: Point2, p1: Point2, val: T) {
     assert!(p0.y <= p1.y && p1.y < dim.y);
     assert!(p0.x <= p1.x && p1.x < dim.x);
-    let strip_value = val * ((p1.x - p0.x + 1) as i64);
+    let strip_value = val * T::from_usize(p1.x - p0.x + 1);
 
     helper_2d(f_slope_y, f_offset, dim, Point2{y:p0.y, x:0}, strip_value, p0.y, false);
     if p1.y + 1 < dim.y {
@@ -277,7 +297,7 @@ pub struct Point3 {
 }
 
 
-pub fn update_3d(fenny: &mut [i64], dim: Dim3, p: Point3, val: i64) {
+pub fn update_3d<T: Value>(fenny: &mut [T], dim: Dim3, p: Point3, val: T) {
     for z in update_inds(p.z, dim.z) {
         for y in update_inds(p.y, dim.y) {
             for x in update_inds(p.x, dim.x) {
@@ -287,8 +307,8 @@ pub fn update_3d(fenny: &mut [i64], dim: Dim3, p: Point3, val: i64) {
     }
 }
 
-pub fn psum_3d(fenny: &[i64], dim: Dim3, p: Point3) -> i64 {
-    let mut ret = 0i64;
+pub fn psum_3d<T: Value>(fenny: &[T], dim: Dim3, p: Point3) -> T {
+    let mut ret = T::default();
     for z in query_inds(p.z) {
         for y in query_inds(p.y) {
             for x in query_inds(p.x) {
@@ -303,62 +323,64 @@ pub fn psum_3d(fenny: &[i64], dim: Dim3, p: Point3) -> i64 {
 
 // 3d slope offset trees.
 
-pub fn so_psum_3d_linear(f_slope_z: &[i64], f_slope_y: &[i64], f_slope_x: &[i64], f_offset: &[i64], dim: Dim3, p: Point3) -> i64 {
+pub fn so_psum_3d_linear<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, p: Point3) -> T {
     let s_z = psum_3d(f_slope_z, dim, p);
     let s_y = psum_3d(f_slope_y, dim, p);
     let s_x = psum_3d(f_slope_x, dim, p);
     let o = psum_3d(f_offset, dim, p);
 
-    return s_z * (p.z as i64) + s_y * (p.y as i64) + s_x * (p.x as i64) + o;
+    return s_z * T::from_usize(p.z) + s_y * T::from_usize(p.y) + s_x * T::from_usize(p.x) + o;
 }
 
-pub fn helper(f_slope: &mut [i64], f_offset: &mut [i64], dim: Dim3, p: Point3, val: i64, ind_: usize, inclusive: bool) {
-    let mut ind = ind_ as i64;
-    if inclusive {
-        ind -= 1;
-    }
+pub fn helper<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Point3, val: T, ind_: usize, inclusive: bool) {
+    let ind = T::from_usize(ind_);
+    let offset = if inclusive {
+        val - val * ind
+    } else {
+        -val * ind
+    };
     update_3d(f_slope, dim, p, val);
-    update_3d(f_offset, dim, p, -val * ind);
+    update_3d(f_offset, dim, p, offset);
 }
 
-pub fn so_update_3d_linear(f_slope_z: &mut [i64], f_slope_y: &mut [i64], f_slope_x: &mut [i64], f_offset: &mut [i64], dim: Dim3, p0: Point3, p1: Point3, val: i64) {
+pub fn so_update_3d_linear<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim3, p0: Point3, p1: Point3, val: T) {
     assert!(p0.z <= p1.z && p1.z < dim.z);
     assert!(p0.y <= p1.y && p1.y < dim.y);
     assert!(p0.x <= p1.x && p1.x < dim.x);
 
     // Contribution from complete xy-slabs.
-    let slab_value = ((p1.x - p0.x + 1) * (p1.y - p0.y + 1)) as i64 * val;
-    helper(f_slope_z, f_offset, dim, Point3{z:p0.z, y:0, x:0}, slab_value as i64, p0.z, false);
+    let slab_value = T::from_usize(p1.x - p0.x + 1) * T::from_usize(p1.y - p0.y + 1) * val;
+    helper(f_slope_z, f_offset, dim, Point3{z:p0.z, y:0, x:0}, slab_value, p0.z, false);
     if p1.z + 1 < dim.z {
-        helper(f_slope_z, f_offset, dim, Point3{z:p1.z+1, y:0, x:0}, -slab_value as i64, p1.z+1, false);
+        helper(f_slope_z, f_offset, dim, Point3{z:p1.z+1, y:0, x:0}, -slab_value, p1.z+1, false);
     }
 
     // Contribution from complete x-strips.
-    let strip_value = (p1.x - p0.x + 1) as i64 * val;
-    helper(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p0.y, x:0}, strip_value as i64, p0.y, false);
+    let strip_value = T::from_usize(p1.x - p0.x + 1) * val;
+    helper(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p0.y, x:0}, strip_value, p0.y, false);
     if p1.y + 1 < dim.y {
-        helper(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p1.y+1, x:0}, -strip_value as i64, p1.y+1, false);
+        helper(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p1.y+1, x:0}, -strip_value, p1.y+1, false);
     }
     if p1.z + 1 < dim.z {
-        helper(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p0.y, x:0}, -strip_value as i64, p0.y, false);
+        helper(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p0.y, x:0}, -strip_value, p0.y, false);
         if p1.y + 1 < dim.y {
-            helper(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p1.y+1, x:0}, strip_value as i64, p1.y+1, false);
+            helper(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p1.y+1, x:0}, strip_value, p1.y+1, false);
         }
     }
 
     // Contribution from x
-    helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p0.x},  val as i64, p0.x, true);
-    helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p1.x}, -val as i64, p1.x, false);
+    helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p0.x},  val, p0.x, true);
+    helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p1.x}, -val, p1.x, false);
     if p1.y + 1 < dim.y {
-        helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p0.x},  -val as i64, p0.x, true);
-        helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p1.x},   val as i64, p1.x, false);
+        helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p0.x},  -val, p0.x, true);
+        helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p1.x},   val, p1.x, false);
     }
     if p1.z + 1 < dim.z {
-        helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p0.x},  -val as i64, p0.x, true);
-        helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p1.x},   val as i64, p1.x, false);
+        helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p0.x},  -val, p0.x, true);
+        helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p1.x},   val, p1.x, false);
         if p1.y + 1 < dim.y {
-            helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p0.x},   val as i64, p0.x, true);
-            helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p1.x},  -val as i64, p1.x, false);
+            helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p0.x},   val, p0.x, true);
+            helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p1.x},  -val, p1.x, false);
         }
     }
 }
@@ -513,3 +535,39 @@ mod tests {
         }
     }
 }
+
+use std::num::Wrapping;
+
+macro_rules! impl_primitive {
+    ($primitive:ty) => {
+        impl Value for $primitive {
+            fn from_usize(v: usize) -> Self {
+                v as Self
+            }
+        }
+    };
+}
+macro_rules! impl_wrapping {
+    ($primitive:ty) => {
+        impl Value for Wrapping<$primitive> {
+            fn from_usize(v: usize) -> Self {
+                Wrapping(v as $primitive)
+            }
+        }
+    };
+}
+
+impl_primitive!(i16);
+impl_primitive!(i32);
+impl_primitive!(i64);
+impl_primitive!(i128);
+impl_primitive!(f32);
+impl_primitive!(f64);
+impl_wrapping!(i16);
+impl_wrapping!(i32);
+impl_wrapping!(i64);
+impl_wrapping!(i128);
+impl_wrapping!(u16);
+impl_wrapping!(u32);
+impl_wrapping!(u64);
+impl_wrapping!(u128);
