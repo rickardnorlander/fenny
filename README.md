@@ -71,7 +71,7 @@ This exists in 2d and 3d. `psum_2d(&tree, p)` computes a sum over all
 points `q` satisfying `(q.y <= p.y && q.x <= p.x)`
 
 ```rust
-use crate::fenny::*;
+use fenny::*;
 let dim = Dim2{y: 5, x: 8};
 let mut tree = vec![0; dim.y * dim.x];
 update_2d(&mut tree, dim , Point2{y: 3, x: 6}, 7);
@@ -112,7 +112,7 @@ arbitrary boxes.
 With that background out of the way, let's look at the operations.
 
 ```rust
-use crate::fenny::*;
+use fenny::*;
 let dim = Dim3{z: 12, y: 6, x: 8};
 let size = dim.z * dim.y * dim.x;
 let mut slope_z = vec![0; size];

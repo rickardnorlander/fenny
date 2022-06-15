@@ -1,1 +1,2 @@
-pub mod fenny;
+mod fenny;
+pub use crate::fenny::*;
