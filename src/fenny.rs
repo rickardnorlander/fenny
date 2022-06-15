@@ -277,7 +277,7 @@ pub struct Point3 {
 }
 
 
-pub fn update_3d(fenny: &mut [i64], p: Point3, val: i64, dim: Dim3) {
+pub fn update_3d(fenny: &mut [i64], dim: Dim3, p: Point3, val: i64) {
     for z in update_inds(p.z, dim.z) {
         for y in update_inds(p.y, dim.y) {
             for x in update_inds(p.x, dim.x) {
@@ -287,7 +287,7 @@ pub fn update_3d(fenny: &mut [i64], p: Point3, val: i64, dim: Dim3) {
     }
 }
 
-pub fn psum_3d(fenny: &[i64], p: Point3, dim: Dim3) -> i64 {
+pub fn psum_3d(fenny: &[i64], dim: Dim3, p: Point3) -> i64 {
     let mut ret = 0i64;
     for z in query_inds(p.z) {
         for y in query_inds(p.y) {
@@ -304,10 +304,10 @@ pub fn psum_3d(fenny: &[i64], p: Point3, dim: Dim3) -> i64 {
 // 3d slope offset trees.
 
 pub fn so_psum_3d_linear(f_slope_z: &[i64], f_slope_y: &[i64], f_slope_x: &[i64], f_offset: &[i64], dim: Dim3, p: Point3) -> i64 {
-    let s_z = psum_3d(f_slope_z, p, dim);
-    let s_y = psum_3d(f_slope_y, p, dim);
-    let s_x = psum_3d(f_slope_x, p, dim);
-    let o = psum_3d(f_offset, p, dim);
+    let s_z = psum_3d(f_slope_z, dim, p);
+    let s_y = psum_3d(f_slope_y, dim, p);
+    let s_x = psum_3d(f_slope_x, dim, p);
+    let o = psum_3d(f_offset, dim, p);
 
     return s_z * (p.z as i64) + s_y * (p.y as i64) + s_x * (p.x as i64) + o;
 }
@@ -317,8 +317,8 @@ pub fn helper(f_slope: &mut [i64], f_offset: &mut [i64], dim: Dim3, p: Point3, v
     if inclusive {
         ind -= 1;
     }
-    update_3d(f_slope, p, val, dim);
-    update_3d(f_offset, p, -val * ind, dim);
+    update_3d(f_slope, dim, p, val);
+    update_3d(f_offset, dim, p, -val * ind);
 }
 
 pub fn so_update_3d_linear(f_slope_z: &mut [i64], f_slope_y: &mut [i64], f_slope_x: &mut [i64], f_offset: &mut [i64], dim: Dim3, p0: Point3, p1: Point3, val: i64) {
