@@ -58,7 +58,7 @@ either be a beefy signed one or you could maybe use a `Wrapping<>`.
 let mut slope = [0i64; 13];
 let mut offset = [0i64; 13];
 // Conceptually a[2..=5] += 3;
-fenny::so_update(&mut slope, &mut offset, 2, 5, 3);
+fenny::so_update(&mut slope, &mut offset, 2..=5, 3);
 fenny::so_psum(&slope, &offset, 2); // Returns 3.
 fenny::so_psum(&slope, &offset, 3); // Returns 6.
 let root_p1 = fenny::get_root_p1(slope.len());
