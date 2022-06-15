@@ -115,10 +115,10 @@ With that background out of the way, let's look at the operations.
 use fenny::*;
 let dim = Dim3{z: 12, y: 6, x: 8};
 let size = dim.z * dim.y * dim.x;
-let mut slope_z = vec![0; size];
-let mut slope_y = vec![0; size];
-let mut slope_x = vec![0; size];
-let mut offset = vec![0; size];
+let mut slope_z = vec![0i64; size];
+let mut slope_y = vec![0i64; size];
+let mut slope_x = vec![0i64; size];
+let mut offset = vec![0i64; size];
 let p0 = Point3{z: 3, y: 2, x: 1};
 let p1 = Point3{z: 7, y: 5, x: 5};
 let p2 = Point3{z: 4, y: 0, x: 0};
