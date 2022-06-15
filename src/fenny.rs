@@ -332,7 +332,7 @@ pub fn so_psum_3d_linear<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: 
     return s_z * T::from_usize(p.z) + s_y * T::from_usize(p.y) + s_x * T::from_usize(p.x) + o;
 }
 
-pub fn helper<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Point3, val: T, ind_: usize, inclusive: bool) {
+fn helper<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Point3, val: T, ind_: usize, inclusive: bool) {
     let ind = T::from_usize(ind_);
     let offset = if inclusive {
         val - val * ind
