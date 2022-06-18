@@ -255,18 +255,18 @@ pub struct Point2 {
 
 pub fn psum_2d<T: Value>(fenny: &[T], dim: Dim2, p: Point2) -> T {
     let mut ret = T::default();
-    for y2 in query_inds(p.y) {
-        for x2 in query_inds(p.x) {
-            ret += fenny[y2 * dim.x + x2];
+    for x2 in query_inds(p.x) {
+        for y2 in query_inds(p.y) {
+            ret += fenny[x2 * dim.y + y2];
         }
     }
     return ret;
 }
 
 pub fn update_2d<T: Value>(fenny: &mut [T], dim: Dim2,  p: Point2, val: T) {
-    for y2 in update_inds(p.y, dim.y) {
-        for x2 in update_inds(p.x, dim.x) {
-            fenny[y2 * dim.x + x2] += val;
+    for x2 in update_inds(p.x, dim.x) {
+        for y2 in update_inds(p.y, dim.y) {
+            fenny[x2 * dim.y + y2] += val;
         }
     }
 }
@@ -319,8 +319,8 @@ pub fn so_update_2d_lex<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_of
     }
 }
 
-fn marginalize_out_y<T: Value>(fenny: &[T], dim: Dim2, y_: usize, x: usize) -> T {
-    return query_inds(y_).map(|y| fenny[y * dim.x + x]).sum();
+fn marginalize_out_y<T: Value>(fenny: &[T], dim: Dim2, y: usize, x: usize) -> T {
+    return psum(&fenny[x*dim.y..], y);
 }
 
 pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, val: T) -> Option<Point2> {
@@ -333,7 +333,7 @@ pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offs
 
     while let Some(y) = yinds.next() {
         let possible_slope_y = low_slope_y + f_slope_y[y];
-        let possible_offset = low_offset + f_offset[y * dim.x];
+        let possible_offset = low_offset + f_offset[y];
         let possible = possible_slope_y * T::from_usize(y) + possible_offset;
         if possible <= val {
             low_slope_y = possible_slope_y;
@@ -346,7 +346,7 @@ pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offs
     if result == Some(Point2{y: 0, x: 0}) {
         return result;
     }
-    // We know now that prefix_sum[(y-1) * dim.x] <= val < prefix_sum[y * dim.x]
+    // We know now that prefix_sum[y-1] <= val < prefix_sum[y]
     // Our answer could either be (y, 0) or it could be (y-1, something)
 
     let root_x_p1 = get_root_p1(dim.x);
@@ -392,10 +392,10 @@ pub struct Point3 {
 
 
 pub fn update_3d<T: Value>(fenny: &mut [T], dim: Dim3, p: Point3, val: T) {
-    for z in update_inds(p.z, dim.z) {
+    for x in update_inds(p.x, dim.x) {
         for y in update_inds(p.y, dim.y) {
-            for x in update_inds(p.x, dim.x) {
-                fenny[z * dim.y * dim.x + y * dim.x + x] += val;
+            for z in update_inds(p.z, dim.z) {
+                fenny[z + y * dim.z + x * dim.y * dim.z] += val;
             }
         }
     }
@@ -403,10 +403,10 @@ pub fn update_3d<T: Value>(fenny: &mut [T], dim: Dim3, p: Point3, val: T) {
 
 pub fn psum_3d<T: Value>(fenny: &[T], dim: Dim3, p: Point3) -> T {
     let mut ret = T::default();
-    for z in query_inds(p.z) {
+    for x in query_inds(p.x) {
         for y in query_inds(p.y) {
-            for x in query_inds(p.x) {
-                ret += fenny[z * dim.y * dim.x + y * dim.x + x];
+            for z in query_inds(p.z) {
+                ret += fenny[z + y * dim.z + x * dim.y * dim.z];
             }
         }
     }
@@ -493,23 +493,12 @@ pub fn so_update_3d_lex<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_sl
     }
 }
 
-fn marginalize_out_z_2d<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y: usize) -> T {
-    return query_inds(z_).map(|z| fenny[z * dim.y + y]).sum();
+fn marginalize_out_z<T: Value>(fenny: &[T], dim: Dim3, z: usize, y: usize) -> T {
+    return psum(&fenny[y*dim.z..], z);
 }
 
-fn marginalize_out_z_3d<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y: usize) -> T {
-    return query_inds(z_).map(|z| fenny[z * dim.y * dim.x + y * dim.x]).sum();
-}
-
-
-fn marginalize_out_zy<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y_: usize, x: usize) -> T{
-    let mut ret = T::default();
-    for z in query_inds(z_) {
-        for y in query_inds(y_) {
-            ret += fenny[z * dim.y * dim.x + y * dim.x + x];
-        }
-    }
-    return ret;
+fn marginalize_out_zy<T: Value>(fenny: &[T], dim: Dim3, z: usize, y: usize, x: usize) -> T{
+    return psum_2d(&fenny[x * dim.z * dim.y..], Dim2{y: dim.z, x: dim.y}, Point2{y: z, x: y});
 }
 
 
@@ -522,7 +511,7 @@ pub fn so_first_larger_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slop
 
     while let Some(z) = zinds.next() {
         let possible_slope_z = low_slope_z + f_slope_z[z];
-        let possible_offset = low_offset + f_offset[z * dim.y * dim.x];
+        let possible_offset = low_offset + f_offset[z];
         let possible = possible_slope_z * T::from_usize(z) + possible_offset;
         if possible <= val {
             low_slope_z = possible_slope_z;
@@ -547,8 +536,8 @@ pub fn so_first_larger_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slop
     let mut low_slope_y = T::default();
 
     while let Some(y) = yinds.next() {
-        let possible_slope_y = low_slope_y + marginalize_out_z_2d(f_slope_y, dim, z, y);
-        let possible_offset = low_offset + marginalize_out_z_3d(f_offset, dim, z, y);
+        let possible_slope_y = low_slope_y + marginalize_out_z(f_slope_y, dim, z, y);
+        let possible_offset = low_offset + marginalize_out_z(f_offset, dim, z, y);
         let possible = zpart + possible_slope_y * T::from_usize(y) + possible_offset;
         if possible <= val {
             low_offset = possible_offset;
