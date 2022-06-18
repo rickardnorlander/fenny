@@ -324,6 +324,7 @@ fn marginalize_out_y<T: Value>(fenny: &[T], dim: Dim2, y: usize, x: usize) -> T 
 }
 
 pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, val: T) -> Option<Point2> {
+    assert!(dim.x > 0 && dim.y > 0);
     let root_y_p1 = get_root_p1(dim.y);
     let mut yinds = BSInds::from_root(root_y_p1, dim.y);
     let mut result = None;
@@ -503,6 +504,7 @@ fn marginalize_out_zy<T: Value>(fenny: &[T], dim: Dim3, z: usize, y: usize, x: u
 
 
 pub fn so_first_larger_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, val: T) -> Option<Point3> {
+    assert!(dim.x > 0 && dim.y > 0 && dim.z > 0);
     let root_z_p1 = get_root_p1(dim.z);
     let mut zinds = BSInds::from_root(root_z_p1, dim.z);
     let mut result = None;
