@@ -247,7 +247,7 @@ pub struct Dim2 {
     pub y: usize,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Point2 {
     pub x: usize,
     pub y: usize,
@@ -319,6 +319,63 @@ pub fn so_update_2d_lex<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_of
     }
 }
 
+fn marginalize_out_y<T: Value>(fenny: &[T], dim: Dim2, y_: usize, x: usize) -> T {
+    let mut ret = T::default();
+    for y in query_inds(y_) {
+        ret += fenny[y * dim.x + x];
+    }
+    return ret;
+}
+
+pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, val: T) -> Option<Point2> {
+    let root_y_p1 = get_root_p1(dim.y);
+    let mut yinds = BSInds::from_root(root_y_p1, dim.y);
+    let mut result = None;
+
+    let mut low_offset = T::default();
+    let mut low_slope_y = T::default();
+
+    while let Some(y) = yinds.next() {
+        let possible_slope_y = low_slope_y + f_slope_y[y];
+        let possible_offset = low_offset + f_offset[y * dim.x];
+        let possible = possible_slope_y * T::from_usize(y) + possible_offset;
+        if possible <= val {
+            low_slope_y = possible_slope_y;
+            low_offset = possible_offset;
+            yinds.higher();
+        } else {
+            result = Some(Point2{y, x:0});
+        }
+    }
+    if result == Some(Point2{y: 0, x: 0}) {
+        return result;
+    }
+    // We know now that prefix_sum[(y-1) * dim.x] <= val < prefix_sum[y * dim.x]
+    // Our answer could either be (y, 0) or it could be (y-1, something)
+
+    let root_x_p1 = get_root_p1(dim.x);
+    let mut xinds = BSInds::from_root(root_x_p1, dim.x);
+
+    let y = result.map(|yx| yx.y).unwrap_or(dim.y) - 1;
+    let ypart = T::from_usize(y) * psum(f_slope_y, y);
+
+    low_offset = T::default();
+    let mut low_slope_x = T::default();
+
+    while let Some(x) = xinds.next() {
+        let possible_slope_x = low_slope_x + marginalize_out_y(f_slope_x, dim, y, x);
+        let possible_offset = low_offset + marginalize_out_y(f_offset, dim, y, x);
+        let possible = ypart + possible_slope_x * T::from_usize(x) + possible_offset;
+        if possible <= val {
+            low_offset = possible_offset;
+            low_slope_x = possible_slope_x;
+            xinds.higher();
+        } else {
+            result = Some(Point2{y, x})
+        }
+    }
+    result
+}
 
 
 // 3d Fenwick trees.
@@ -330,7 +387,7 @@ pub struct Dim3 {
     pub z: usize,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Point3 {
     pub x: usize,
     pub y: usize,
@@ -439,5 +496,113 @@ pub fn so_update_3d_lex<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_sl
         }
     }
 }
+
+fn marginalize_out_z_2d<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y: usize) -> T {
+    let mut ret = T::default();
+    for z in query_inds(z_) {
+        ret += fenny[z * dim.y + y];
+    }
+    return ret;
+}
+
+fn marginalize_out_z_3d<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y: usize) -> T {
+    let mut ret = T::default();
+    for z in query_inds(z_) {
+        ret += fenny[z * dim.y * dim.x + y * dim.x];
+    }
+    return ret;
+}
+
+
+fn marginalize_out_zy<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y_: usize, x: usize) -> T{
+    let mut ret = T::default();
+    for z in query_inds(z_) {
+        for y in query_inds(y_) {
+            ret += fenny[z * dim.y * dim.x + y * dim.x + x];
+        }
+    }
+    return ret;
+}
+
+
+pub fn so_first_larger_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, val: T) -> Option<Point3> {
+    let root_z_p1 = get_root_p1(dim.z);
+    let mut zinds = BSInds::from_root(root_z_p1, dim.z);
+    let mut result = None;
+    let mut low_offset = T::default();
+    let mut low_slope_z = T::default();
+
+    while let Some(z) = zinds.next() {
+        let possible_slope_z = low_slope_z + f_slope_z[z];
+        let possible_offset = low_offset + f_offset[z * dim.y * dim.x];
+        let possible = possible_slope_z * T::from_usize(z) + possible_offset;
+        if possible <= val {
+            low_slope_z = possible_slope_z;
+            low_offset = possible_offset;
+            zinds.higher();
+        } else {
+            result = Some(Point3{z, y:0, x:0});
+        }
+    }
+    if result == Some(Point3{z:0, y:0, x:0}) {
+        return result;
+    }
+    // We know now that prefix_sum[(z-1) * dim.y * dim.x] <= val < prefix_sum[z * dim.y * dim.x]
+    // Our answer could either be (z, 0, 0) or it could be (z-1, something, something)
+    let root_y_p1 = get_root_p1(dim.y);
+    let mut yinds = BSInds::from_root(root_y_p1, dim.y);
+
+    let z = result.map(|p| p.z).unwrap_or(dim.z) - 1;
+    let zpart = T::from_usize(z) * psum(f_slope_z, z);
+
+    low_offset = T::default();
+    let mut low_slope_y = T::default();
+
+    while let Some(y) = yinds.next() {
+        let possible_slope_y = low_slope_y + marginalize_out_z_2d(f_slope_y, dim, z, y);
+        let possible_offset = low_offset + marginalize_out_z_3d(f_offset, dim, z, y);
+        let possible = zpart + possible_slope_y * T::from_usize(y) + possible_offset;
+        if possible <= val {
+            low_offset = possible_offset;
+            low_slope_y = possible_slope_y;
+            yinds.higher();
+        } else {
+            result = Some(Point3{z, y, x:0})
+        }
+    }
+    if result == Some(Point3{z, y: 0, x: 0}) {
+        return result;
+    }
+    let y = if result == None {
+        dim.y - 1
+    } else if result == Some(Point3{z: z+1, y: 0, x: 0}) {
+        dim.y - 1
+    } else {
+        result.unwrap().y - 1
+    };
+
+    let root_x_p1 = get_root_p1(dim.x);
+    let mut xinds = BSInds::from_root(root_x_p1, dim.x);
+
+    let ypart = T::from_usize(y) * psum_2d(f_slope_y, Dim2{y: dim.z, x: dim.y}, Point2{y: z, x: y});
+
+    low_offset = T::default();
+    let mut low_slope_x = T::default();
+
+    while let Some(x) = xinds.next() {
+        let possible_slope_x = low_slope_x + marginalize_out_zy(f_slope_x, dim, z, y, x);
+        let possible_offset = low_offset + marginalize_out_zy(f_offset, dim, z, y, x);
+        let possible = zpart + ypart + possible_slope_x * T::from_usize(x) + possible_offset;
+        if possible <= val {
+            low_offset = possible_offset;
+            low_slope_x = possible_slope_x;
+            xinds.higher();
+        } else {
+            result = Some(Point3{z, y, x})
+        }
+    }
+    result
+}
+
 
 mod test_fenny;
