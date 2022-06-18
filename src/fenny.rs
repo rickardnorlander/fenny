@@ -57,6 +57,9 @@
 // Each of which correspond to some node in the tree.
 
 
+use std::num::Wrapping;
+
+
 
 // Value type
 
@@ -73,6 +76,38 @@ pub trait Value :
 {
     fn from_usize(v: usize) -> Self;
 }
+macro_rules! impl_primitive {
+    ($primitive:ty) => {
+        impl Value for $primitive {
+            fn from_usize(v: usize) -> Self {
+                v as Self
+            }
+        }
+    };
+}
+impl_primitive!(i16);
+impl_primitive!(i32);
+impl_primitive!(i64);
+impl_primitive!(i128);
+impl_primitive!(f32);
+impl_primitive!(f64);
+macro_rules! impl_wrapping {
+    ($primitive:ty) => {
+        impl Value for Wrapping<$primitive> {
+            fn from_usize(v: usize) -> Self {
+                Wrapping(v as $primitive)
+            }
+        }
+    };
+}
+impl_wrapping!(i16);
+impl_wrapping!(i32);
+impl_wrapping!(i64);
+impl_wrapping!(i128);
+impl_wrapping!(u16);
+impl_wrapping!(u32);
+impl_wrapping!(u64);
+impl_wrapping!(u128);
 
 
 
@@ -90,7 +125,7 @@ pub const fn get_root_p1(size: usize) -> usize {
     if size == 0 {
         panic!();
     }
-    let shift = 63 - (size+1).leading_zeros();
+    let shift = 63 - size.leading_zeros();
     (1 << shift) as usize
 }
 
@@ -385,189 +420,4 @@ pub fn so_update_3d_linear<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f
     }
 }
 
-
-
-// Tests
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn index_functions() {
-        use crate::fenny::set_least_significant_zero;
-        use crate::fenny::unset_trailing_ones;
-
-        assert_eq!(set_least_significant_zero(0), 1);
-        assert_eq!(set_least_significant_zero(0b1100), 0b1101);
-        assert_eq!(set_least_significant_zero(0b1101), 0b1111);
-        assert_eq!(set_least_significant_zero(0b1111), 0b11111);
-
-        assert_eq!(unset_trailing_ones(1), 0);
-        assert_eq!(unset_trailing_ones(0), 0);
-        assert_eq!(unset_trailing_ones(0b1000), 0b1000);
-        assert_eq!(unset_trailing_ones(0b1001), 0b1000);
-        assert_eq!(unset_trailing_ones(0b1011), 0b1000);
-        assert_eq!(unset_trailing_ones(0b0011), 0);
-    }
-    #[test]
-    fn single_fenny() {
-        use crate::fenny::update;
-        use crate::fenny::psum;
-        use crate::fenny::first_larger;
-        use crate::fenny::get_root_p1;
-
-        let mut fenny_arr = vec![0; 13];
-
-        let rp1 = get_root_p1(fenny_arr.len());
-        assert_eq!(rp1, 8);
-
-        update(&mut fenny_arr, 3, 17);
-        assert_eq!(psum(&mut fenny_arr, 2), 0);
-        assert_eq!(psum(&mut fenny_arr, 3), 17);
-        assert_eq!(psum(&mut fenny_arr, 4), 17);
-
-        assert_eq!(first_larger(&fenny_arr, rp1, -1), Some(0));
-        assert_eq!(first_larger(&fenny_arr, rp1, 0), Some(3));
-        assert_eq!(first_larger(&fenny_arr, rp1, 16), Some(3));
-        assert_eq!(first_larger(&fenny_arr, rp1, 17), None);
-
-        update(&mut fenny_arr, 4, 2);
-        assert_eq!(psum(&mut fenny_arr, 3), 17);
-        assert_eq!(psum(&mut fenny_arr, 4), 19);
-        assert_eq!(psum(&mut fenny_arr, 5), 19);
-        assert_eq!(first_larger(&fenny_arr, rp1, 18), Some(4));
-        assert_eq!(first_larger(&fenny_arr, rp1, 19), None);
-    }
-    #[test]
-    fn fenny_so() {
-        use crate::fenny::so_update;
-        use crate::fenny::so_psum;
-        use crate::fenny::so_first_larger;
-        use crate::fenny::get_root_p1;
-
-        let mut fenny_o = vec![0; 13];
-        let mut fenny_s = vec![0; 13];
-
-        let rp1 = get_root_p1(fenny_s.len());
-        assert_eq!(rp1, 8);
-
-        so_update(&mut fenny_s, &mut fenny_o, 3..=5, 7);
-        assert_eq!(so_psum(&fenny_s, &fenny_o, 1), 0);
-        assert_eq!(so_psum(&fenny_s, &fenny_o, 3), 7);
-        assert_eq!(so_psum(&fenny_s, &fenny_o, 4), 14);
-        assert_eq!(so_psum(&fenny_s, &fenny_o, 5), 21);
-        assert_eq!(so_psum(&fenny_s, &fenny_o, 6), 21);
-
-
-        assert_eq!(so_first_larger(&fenny_s, &fenny_o, rp1, -1), Some(0));
-        assert_eq!(so_first_larger(&fenny_s, &fenny_o, rp1, 0), Some(3));
-        assert_eq!(so_first_larger(&fenny_s, &fenny_o, rp1, 11), Some(4));
-        assert_eq!(so_first_larger(&fenny_s, &fenny_o, rp1, 17), Some(5));
-        assert_eq!(so_first_larger(&fenny_s, &fenny_o, rp1, 21), None);
-    }
-    #[test]
-    fn dim2() {
-        use crate::fenny::so_update_2d_linear;
-        use crate::fenny::so_psum_2d_linear;
-        use crate::fenny::Point2;
-        use crate::fenny::Dim2;
-
-        let dim = Dim2{x: 8, y: 7};
-        let size = dim.x * dim.y;
-        let mut fenny_y = vec![0; size];
-        let mut fenny_x = vec![0; size];
-        let mut fenny_o = vec![0; size];
-        let p0 = Point2{y:2, x:2};
-        let p1 = Point2{y:3, x:4};
-
-        so_update_2d_linear(&mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, 7);
-
-        let mut myarr = vec![0; size];
-        for y in p0.y..=p1.y {
-            for x in p0.x..=p1.x {
-                myarr[y * dim.x + x] = 7;
-            }
-        }
-        let mut cumsum = 0;
-        for y in 0..dim.y {
-            for x in 0..dim.x {
-                cumsum += myarr[y * dim.x + x];
-                //println!("{} {} {}", y, x, cumsum);
-                assert_eq!(so_psum_2d_linear(&fenny_y, &fenny_x, &fenny_o, dim, Point2{y, x}), cumsum);
-            }
-        }
-    }
-    #[test]
-    fn dim3() {
-        use crate::fenny::so_update_3d_linear;
-        use crate::fenny::so_psum_3d_linear;
-        use crate::fenny::{Dim3,Point3};
-
-        let dim =  Dim3{z:11, y: 11, x: 7};
-        let size = dim.x * dim.y * dim.z;
-        let mut fenny_z = vec![0; size];
-        let mut fenny_y = vec![0; size];
-        let mut fenny_x = vec![0; size];
-        let mut fenny_o = vec![0; size];
-
-        let p0 = Point3{z:4,y:3,x:2};
-        let p1 = Point3{z:6,y:8,x:5};
-
-        so_update_3d_linear(&mut fenny_z, &mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, 7);
-
-        let mut myarr = vec![0; size];
-        for z in p0.z..=p1.z {
-            for y in p0.y..=p1.y {
-                for x in p0.x..=p1.x {
-                    myarr[z * dim.y * dim.x + y * dim.x + x] = 7;
-                }
-            }
-        }
-        let mut cumsum = 0;
-        for z in 0..dim.z {
-            for y in 0..dim.y {
-                for x in 0..dim.x {
-                    cumsum += myarr[z * dim.y * dim.x + y * dim.x + x];
-                    let p = Point3{z, y, x};
-                    println!("{} {} {} {}", z, y, x, cumsum);
-                    assert_eq!(so_psum_3d_linear(&fenny_z, &fenny_y, &fenny_x, &fenny_o, dim, p), cumsum);
-                }
-            }
-        }
-    }
-}
-
-use std::num::Wrapping;
-
-macro_rules! impl_primitive {
-    ($primitive:ty) => {
-        impl Value for $primitive {
-            fn from_usize(v: usize) -> Self {
-                v as Self
-            }
-        }
-    };
-}
-macro_rules! impl_wrapping {
-    ($primitive:ty) => {
-        impl Value for Wrapping<$primitive> {
-            fn from_usize(v: usize) -> Self {
-                Wrapping(v as $primitive)
-            }
-        }
-    };
-}
-
-impl_primitive!(i16);
-impl_primitive!(i32);
-impl_primitive!(i64);
-impl_primitive!(i128);
-impl_primitive!(f32);
-impl_primitive!(f64);
-impl_wrapping!(i16);
-impl_wrapping!(i32);
-impl_wrapping!(i64);
-impl_wrapping!(i128);
-impl_wrapping!(u16);
-impl_wrapping!(u32);
-impl_wrapping!(u64);
-impl_wrapping!(u128);
+mod test_fenny;

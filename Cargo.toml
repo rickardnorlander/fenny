@@ -9,3 +9,6 @@ repository = "https://github.com/rickardnorlander/fenny/"
 license = "BSD-2-Clause"
 keywords = ["fenwick", "binary", "prefix", "arithmetic-coding"]
 categories = ["data-structures"]
+
+[dev-dependencies]
+rand = "0.8.1"
