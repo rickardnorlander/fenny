@@ -210,7 +210,7 @@ mod fenny {
         fn dim2_so() {
             let dim = Dim2{x: 8, y: 7};
             let size = dim.x * dim.y;
-            let mut fenny_y = vec![0; size];
+            let mut fenny_y = vec![0; dim.y];
             let mut fenny_x = vec![0; size];
             let mut fenny_o = vec![0; size];
             let p0 = Point2{y:2, x:2};
@@ -238,7 +238,7 @@ mod fenny {
             for _ in 0..100 {
                 let dim = Dim2{x: r.gen_range(1..20), y: r.gen_range(1..20)};
                 let size = dim.x * dim.y;
-                let mut fenny_y = vec![0; size];
+                let mut fenny_y = vec![0; dim.y];
                 let mut fenny_x = vec![0; size];
                 let mut fenny_o = vec![0; size];
                 let mut myarr = vec![0; size];
@@ -289,10 +289,10 @@ mod fenny {
                 let p0 = Point3{z: tc[3], y: tc[4], x: tc[5]};
                 let p1 = Point3{z: tc[6], y: tc[7], x: tc[8]};
                 let size = dim.x * dim.y * dim.z;
-                let mut fenny_z = vec![0; size];
-                let mut fenny_y = vec![0; size];
-                let mut fenny_x = vec![0; size];
-                let mut fenny_o = vec![0; size];
+                let mut fenny_z = vec![0; dim.z];
+                let mut fenny_y = vec![0; dim.z * dim.y];
+                let mut fenny_x = vec![0; dim.x * dim.y * dim.z];
+                let mut fenny_o = vec![0; dim.x * dim.y * dim.z];
                 let mut myarr = vec![0; size];
 
                 so_update_3d_linear(&mut fenny_z, &mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, 3) ;
@@ -321,12 +321,11 @@ mod fenny {
             let mut r = rand::rngs::StdRng::from_seed([0;32]);
             for _ in 0..10 {
                 let dim =  Dim3{z: r.gen_range(1..50), y: r.gen_range(1..50), x: r.gen_range(1..50)};
-                let size = dim.x * dim.y * dim.z;
-                let mut fenny_z = vec![0; size];
-                let mut fenny_y = vec![0; size];
-                let mut fenny_x = vec![0; size];
-                let mut fenny_o = vec![0; size];
-                let mut myarr = vec![0; size];
+                let mut fenny_z = vec![0; dim.z];
+                let mut fenny_y = vec![0; dim.z * dim.y];
+                let mut fenny_x = vec![0; dim.x * dim.y * dim.z];
+                let mut fenny_o = vec![0; dim.x * dim.y * dim.z];
+                let mut myarr = vec![0; dim.x * dim.y * dim.z];
 
                 for _ in 0..10 {
                     let p0 = Point3{z: r.gen_range(0..dim.z),

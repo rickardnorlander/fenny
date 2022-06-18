@@ -276,14 +276,20 @@ pub fn update_2d<T: Value>(fenny: &mut [T], dim: Dim2,  p: Point2, val: T) {
 // 2d slope offset trees.
 
 pub fn so_psum_2d_linear<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, p: Point2) -> T {
-    let s_y = psum_2d(f_slope_y, dim, p);
+    let s_y = psum(f_slope_y, p.y);
     let s_x = psum_2d(f_slope_x, dim, p);
     let o = psum_2d(f_offset, dim, p);
 
     return s_y * T::from_usize(p.y) + s_x * T::from_usize(p.x) + o;
 }
 
-fn helper_2d<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim2, p: Point2, val: T, ind_: usize, inclusive: bool)  {
+fn helper_2y<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim2, y: usize, val: T)  {
+    let ind = T::from_usize(y);
+    let offset = -val * ind;
+    update(f_slope, y, val);
+    update_2d(f_offset, dim, Point2{y, x:0}, offset);
+}
+fn helper_2x<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim2, p: Point2, val: T, ind_: usize, inclusive: bool)  {
     let ind = T::from_usize(ind_);
     let offset = if inclusive {
         val - val * ind
@@ -300,16 +306,16 @@ pub fn so_update_2d_linear<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f
     assert!(p0.x <= p1.x && p1.x < dim.x);
     let strip_value = val * T::from_usize(p1.x - p0.x + 1);
 
-    helper_2d(f_slope_y, f_offset, dim, Point2{y:p0.y, x:0}, strip_value, p0.y, false);
+    helper_2y(f_slope_y, f_offset, dim, p0.y, strip_value);
     if p1.y + 1 < dim.y {
-        helper_2d(f_slope_y, f_offset, dim, Point2{y:p1.y+1, x:0}, -strip_value, p1.y+1, false);
+        helper_2y(f_slope_y, f_offset, dim, p1.y+1, -strip_value);
     }
 
-    helper_2d(f_slope_x, f_offset, dim, Point2{y:p0.y, x:p0.x}, val, p0.x, true);
-    helper_2d(f_slope_x, f_offset, dim, Point2{y:p0.y, x:p1.x}, -val, p1.x, false);
+    helper_2x(f_slope_x, f_offset, dim, Point2{y:p0.y, x:p0.x}, val, p0.x, true);
+    helper_2x(f_slope_x, f_offset, dim, Point2{y:p0.y, x:p1.x}, -val, p1.x, false);
     if p1.y + 1 < dim.y {
-        helper_2d(f_slope_x, f_offset, dim, Point2{y:p1.y+1, x:p0.x}, -val, p0.x, true);
-        helper_2d(f_slope_x, f_offset, dim, Point2{y:p1.y+1, x:p1.x}, val, p1.x, false);
+        helper_2x(f_slope_x, f_offset, dim, Point2{y:p1.y+1, x:p0.x}, -val, p0.x, true);
+        helper_2x(f_slope_x, f_offset, dim, Point2{y:p1.y+1, x:p1.x}, val, p1.x, false);
     }
 }
 
@@ -359,16 +365,30 @@ pub fn psum_3d<T: Value>(fenny: &[T], dim: Dim3, p: Point3) -> T {
 // 3d slope offset trees.
 
 pub fn so_psum_3d_linear<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, p: Point3) -> T {
-    let s_z = psum_3d(f_slope_z, dim, p);
-    let s_y = psum_3d(f_slope_y, dim, p);
+    let s_z = psum(f_slope_z, p.z);
+    let s_y = psum_2d(f_slope_y, Dim2{y:dim.z,x:dim.y}, Point2{y:p.z,x:p.y});
     let s_x = psum_3d(f_slope_x, dim, p);
     let o = psum_3d(f_offset, dim, p);
 
     return s_z * T::from_usize(p.z) + s_y * T::from_usize(p.y) + s_x * T::from_usize(p.x) + o;
 }
 
-fn helper<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Point3, val: T, ind_: usize, inclusive: bool) {
-    let ind = T::from_usize(ind_);
+fn helper_3z<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, z: usize, val: T) {
+    let ind = T::from_usize(z);
+    let offset = -val * ind;
+    update(f_slope, z, val);
+    update_3d(f_offset, dim, Point3{z:z, y:0, x:0}, offset);
+}
+
+fn helper_3y<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Point3, val: T) {
+    let ind = T::from_usize(p.y);
+    let offset = -val * ind;
+    update_2d(f_slope, Dim2{y:dim.z, x: dim.y}, Point2{y:p.z, x:p.y}, val);
+    update_3d(f_offset, dim, Point3{z:p.z, y:p.y, x:0}, offset);
+}
+
+fn helper_3x<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Point3, val: T, inclusive: bool) {
+    let ind = T::from_usize(p.x);
     let offset = if inclusive {
         val - val * ind
     } else {
@@ -385,37 +405,37 @@ pub fn so_update_3d_linear<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f
 
     // Contribution from complete xy-slabs.
     let slab_value = T::from_usize(p1.x - p0.x + 1) * T::from_usize(p1.y - p0.y + 1) * val;
-    helper(f_slope_z, f_offset, dim, Point3{z:p0.z, y:0, x:0}, slab_value, p0.z, false);
+    helper_3z(f_slope_z, f_offset, dim, p0.z, slab_value);
     if p1.z + 1 < dim.z {
-        helper(f_slope_z, f_offset, dim, Point3{z:p1.z+1, y:0, x:0}, -slab_value, p1.z+1, false);
+        helper_3z(f_slope_z, f_offset, dim, p1.z+1, -slab_value);
     }
 
     // Contribution from complete x-strips.
     let strip_value = T::from_usize(p1.x - p0.x + 1) * val;
-    helper(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p0.y, x:0}, strip_value, p0.y, false);
+    helper_3y(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p0.y, x:0}, strip_value);
     if p1.y + 1 < dim.y {
-        helper(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p1.y+1, x:0}, -strip_value, p1.y+1, false);
+        helper_3y(f_slope_y, f_offset, dim, Point3{z:p0.z, y:p1.y+1, x:0}, -strip_value);
     }
     if p1.z + 1 < dim.z {
-        helper(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p0.y, x:0}, -strip_value, p0.y, false);
+        helper_3y(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p0.y, x:0}, -strip_value);
         if p1.y + 1 < dim.y {
-            helper(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p1.y+1, x:0}, strip_value, p1.y+1, false);
+            helper_3y(f_slope_y, f_offset, dim, Point3{z:p1.z+1, y:p1.y+1, x:0}, strip_value);
         }
     }
 
     // Contribution from x
-    helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p0.x},  val, p0.x, true);
-    helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p1.x}, -val, p1.x, false);
+    helper_3x(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p0.x},  val, true);
+    helper_3x(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p0.y, x:p1.x}, -val, false);
     if p1.y + 1 < dim.y {
-        helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p0.x},  -val, p0.x, true);
-        helper(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p1.x},   val, p1.x, false);
+        helper_3x(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p0.x},  -val, true);
+        helper_3x(f_slope_x, f_offset, dim, Point3{z: p0.z, y:p1.y + 1, x:p1.x},   val, false);
     }
     if p1.z + 1 < dim.z {
-        helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p0.x},  -val, p0.x, true);
-        helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p1.x},   val, p1.x, false);
+        helper_3x(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p0.x},  -val, true);
+        helper_3x(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p0.y, x:p1.x},   val, false);
         if p1.y + 1 < dim.y {
-            helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p0.x},   val, p0.x, true);
-            helper(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p1.x},  -val, p1.x, false);
+            helper_3x(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p0.x},   val, true);
+            helper_3x(f_slope_x, f_offset, dim, Point3{z: p1.z+1, y:p1.y + 1, x:p1.x},  -val, false);
         }
     }
 }
