@@ -86,7 +86,7 @@ psum_2d(&tree, dim, Point2{y: 4, x: 7});
 ```
 These operations run in `log(dim.x) * log (dim.y) * log (dim.z)`
 
-## Higher dimension, slope offset, linear
+## Higher dimension, slope offset, lexicographic
 
 First a little background. This is something I came up with to help
 with arithmetic coding. We have a probability density function over a
@@ -122,17 +122,17 @@ let p0 = Point3{z: 3, y: 2, x: 1};
 let p1 = Point3{z: 7, y: 5, x: 5};
 let p2 = Point3{z: 4, y: 0, x: 0};
 // Updates all points q with p0.x<=q.x<=p1.x && p0.y<=q.x<=p1.y && p0.z<=q.x<=p1.z
-so_update_3d_linear(&mut slope_z, &mut slope_y, &mut slope_x, &mut offset, dim, p0, p1, 11);
+so_update_3d_lex(&mut slope_z, &mut slope_y, &mut slope_x, &mut offset, dim, p0, p1, 11);
 // Our points out are laid out in lexicographic order according to z, y, x.
 // Since 4, 0, 0 comes after (3, 2, 1), (3, 2, 2), ... (3, 5, 5) our result is 5 * 4 * 11;
-so_psum_3d_linear(&slope_z, &slope_y, &slope_x, &offset, dim, p2);
+so_psum_3d_lex(&slope_z, &slope_y, &slope_x, &offset, dim, p2);
 ```
 
 These operations run in `log(dim.x) * log (dim.y) * log (dim.z)`
 
-Now wouldn't it be cool if there was a binary search for 3d_linear?
+Now wouldn't it be cool if there was a binary search for 3d_lex?
 Too bad, because it's just too complicated. Maybe someday. In the
-meantime wrap `so_psum_3d_linear` with a binary search, for
+meantime wrap `so_psum_3d_lex` with a binary search, for
 `log(dim.x) * log (dim.y) * log (dim.z) * log(dim.x * dim.y * dim.z)`
 time.
 

@@ -216,7 +216,7 @@ mod fenny {
             let p0 = Point2{y:2, x:2};
             let p1 = Point2{y:3, x:4};
 
-            so_update_2d_linear(&mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, 7);
+            so_update_2d_lex(&mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, 7);
 
             let mut myarr = vec![0; size];
             for y in p0.y..=p1.y {
@@ -228,7 +228,7 @@ mod fenny {
             for y in 0..dim.y {
                 for x in 0..dim.x {
                     cumsum += myarr[y * dim.x + x];
-                    assert_eq!(so_psum_2d_linear(&fenny_y, &fenny_x, &fenny_o, dim, Point2{y, x}), cumsum);
+                    assert_eq!(so_psum_2d_lex(&fenny_y, &fenny_x, &fenny_o, dim, Point2{y, x}), cumsum);
                 }
             }
         }
@@ -248,7 +248,7 @@ mod fenny {
                     let p1 = Point2{y:r.gen_range(p0.y..dim.y), x:r.gen_range(p0.x..dim.x)};
                     let val = r.gen_range(0..=10);
 
-                    so_update_2d_linear(&mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, val);
+                    so_update_2d_lex(&mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, val);
 
                     for y in p0.y..=p1.y {
                         for x in p0.x..=p1.x {
@@ -261,7 +261,7 @@ mod fenny {
                     for x in 0..dim.x {
                         cumsum += myarr[y * dim.x + x];
                         let p = Point2{y, x};
-                        assert_eq!(so_psum_2d_linear(&fenny_y, &fenny_x, &fenny_o, dim, p), cumsum);
+                        assert_eq!(so_psum_2d_lex(&fenny_y, &fenny_x, &fenny_o, dim, p), cumsum);
                     }
                 }
             }
@@ -295,7 +295,7 @@ mod fenny {
                 let mut fenny_o = vec![0; dim.x * dim.y * dim.z];
                 let mut myarr = vec![0; size];
 
-                so_update_3d_linear(&mut fenny_z, &mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, 3) ;
+                so_update_3d_lex(&mut fenny_z, &mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, 3) ;
                 for z in p0.z..=p1.z {
                     for y in p0.y..=p1.y {
                         for x in p0.x..=p1.x {
@@ -309,7 +309,7 @@ mod fenny {
                         for x in 0..dim.x {
                             cumsum += myarr[z * dim.y * dim.x + y * dim.x + x];
                             let p = Point3{z, y, x};
-                            assert_eq!(so_psum_3d_linear(&fenny_z, &fenny_y, &fenny_x, &fenny_o, dim, p), cumsum);
+                            assert_eq!(so_psum_3d_lex(&fenny_z, &fenny_y, &fenny_x, &fenny_o, dim, p), cumsum);
                         }
                     }
                 }
@@ -337,7 +337,7 @@ mod fenny {
                                     x: r.gen_range(p0.x..dim.x)};
 
                     let v = r.gen_range(0..10);
-                    so_update_3d_linear(&mut fenny_z, &mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, v) ;
+                    so_update_3d_lex(&mut fenny_z, &mut fenny_y, &mut fenny_x, &mut fenny_o, dim, p0, p1, v) ;
                     for z in p0.z..=p1.z {
                         for y in p0.y..=p1.y {
                             for x in p0.x..=p1.x {
@@ -352,7 +352,7 @@ mod fenny {
                         for x in 0..dim.x {
                             cumsum += myarr[z * dim.y * dim.x + y * dim.x + x];
                             let p = Point3{z, y, x};
-                            assert_eq!(so_psum_3d_linear(&fenny_z, &fenny_y, &fenny_x, &fenny_o, dim, p), cumsum);
+                            assert_eq!(so_psum_3d_lex(&fenny_z, &fenny_y, &fenny_x, &fenny_o, dim, p), cumsum);
                         }
                     }
                 }

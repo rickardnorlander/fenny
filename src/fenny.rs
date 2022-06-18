@@ -275,7 +275,7 @@ pub fn update_2d<T: Value>(fenny: &mut [T], dim: Dim2,  p: Point2, val: T) {
 
 // 2d slope offset trees.
 
-pub fn so_psum_2d_linear<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, p: Point2) -> T {
+pub fn so_psum_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, p: Point2) -> T {
     let s_y = psum(f_slope_y, p.y);
     let s_x = psum_2d(f_slope_x, dim, p);
     let o = psum_2d(f_offset, dim, p);
@@ -300,7 +300,7 @@ fn helper_2x<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim2, p: Poin
     update_2d(f_offset, dim, p, offset);
 }
 
-pub fn so_update_2d_linear<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim2,
+pub fn so_update_2d_lex<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim2,
                            p0: Point2, p1: Point2, val: T) {
     assert!(p0.y <= p1.y && p1.y < dim.y);
     assert!(p0.x <= p1.x && p1.x < dim.x);
@@ -364,7 +364,7 @@ pub fn psum_3d<T: Value>(fenny: &[T], dim: Dim3, p: Point3) -> T {
 
 // 3d slope offset trees.
 
-pub fn so_psum_3d_linear<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, p: Point3) -> T {
+pub fn so_psum_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, p: Point3) -> T {
     let s_z = psum(f_slope_z, p.z);
     let s_y = psum_2d(f_slope_y, Dim2{y:dim.z,x:dim.y}, Point2{y:p.z,x:p.y});
     let s_x = psum_3d(f_slope_x, dim, p);
@@ -398,7 +398,7 @@ fn helper_3x<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Poin
     update_3d(f_offset, dim, p, offset);
 }
 
-pub fn so_update_3d_linear<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim3, p0: Point3, p1: Point3, val: T) {
+pub fn so_update_3d_lex<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim3, p0: Point3, p1: Point3, val: T) {
     assert!(p0.z <= p1.z && p1.z < dim.z);
     assert!(p0.y <= p1.y && p1.y < dim.y);
     assert!(p0.x <= p1.x && p1.x < dim.x);
