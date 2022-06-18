@@ -320,11 +320,7 @@ pub fn so_update_2d_lex<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_of
 }
 
 fn marginalize_out_y<T: Value>(fenny: &[T], dim: Dim2, y_: usize, x: usize) -> T {
-    let mut ret = T::default();
-    for y in query_inds(y_) {
-        ret += fenny[y * dim.x + x];
-    }
-    return ret;
+    return query_inds(y_).map(|y| fenny[y * dim.x + x]).sum();
 }
 
 pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, val: T) -> Option<Point2> {
@@ -498,19 +494,11 @@ pub fn so_update_3d_lex<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_sl
 }
 
 fn marginalize_out_z_2d<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y: usize) -> T {
-    let mut ret = T::default();
-    for z in query_inds(z_) {
-        ret += fenny[z * dim.y + y];
-    }
-    return ret;
+    return query_inds(z_).map(|z| fenny[z * dim.y + y]).sum();
 }
 
 fn marginalize_out_z_3d<T: Value>(fenny: &[T], dim: Dim3, z_: usize, y: usize) -> T {
-    let mut ret = T::default();
-    for z in query_inds(z_) {
-        ret += fenny[z * dim.y * dim.x + y * dim.x];
-    }
-    return ret;
+    return query_inds(z_).map(|z| fenny[z * dim.y * dim.x + y * dim.x]).sum();
 }
 
 
