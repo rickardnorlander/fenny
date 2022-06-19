@@ -2,26 +2,16 @@
 
 Fenny is a library for Fenwick Trees, also known as Binary Indexed
 Trees (BIT). They are a data structure that can efficiently (as in
-`O(log n)`) support two operations.
+`O(log n)`) support three operations.
 
 ```rust
-a[i] += x;
-a[..=i].sum()
+a[i] += v;
+a[..=i].iter().sum();
 ```
 
-## Caveat emptor
+The third operation is a binary search on prefix sums.
 
-There are a few other libraries containing fenwick trees, and compared
-to your other choices, this is not as well tested, or as well
-written. API stability might only come when I get bored and stop
-maintaining it. This is my first rust crate so I'm following or even
-aware of the best practices. In summary, use another crate if you
-can. But this library has a few useful functions none of the others
-do, and this is in fact the reason it was created in the first place.
-
-## Operations
-
-Let's look at the basic operations.
+Here's a simple example usage:
 
 ```rust
 let mut tree = [0; 13];   // An array of zeros is a fenwick tree of zeros.
@@ -29,15 +19,9 @@ fenny::update(&mut tree, 2 /* 0-based index */, 7);
 fenny::update(&mut tree, 5, 20);
 fenny::psum(&tree, 2);  // Returns 7.
 fenny::psum(&tree, 5);  // Returns 27.
-```
 
-There's also `O(log n)` time binary search. Pretty useful when doing
-arithmetic coding. Faster than the naive version of wrapping
-`fenny::psum` with a binary search which would be `O(log^2 n)`
-
-```rust
 let root_p1 = fenny::get_root_p1(tree.len());
-// Returns Some(5), as a[..=5].sum() = 7 + 20 > 26.
+// Returns Some(5), as a[..=5].iter().sum() == 7 + 20 > 26.
 fenny::first_larger(&tree, root_p1, 26);
 fenny::first_larger(&tree, root_p1, 27); // Returns None.
 ```
@@ -50,19 +34,15 @@ update. Also in the same juicy `O(log n)` time. The size of the range
 doesn't matter, it can update the whole array in the same time as
 updating a single element.
 
-First a word of caution! Slope-offset functions will use negative
-numbers, and do multiplications and stuff, so your value type needs to
-either be a beefy signed one or you could maybe use a `Wrapping<>`.
-
 ```rust
 let mut slope = [0i64; 13];
 let mut offset = [0i64; 13];
 // Conceptually a[2..=5] += 3;
-fenny::so_update(&mut slope, &mut offset, 2..=5, 3);
-fenny::so_psum(&slope, &offset, 2); // Returns 3.
-fenny::so_psum(&slope, &offset, 3); // Returns 6.
+fenny::update_so(&mut slope, &mut offset, 2..=5, 3);
+fenny::psum_so(&slope, &offset, 2); // Returns 3.
+fenny::psum_so(&slope, &offset, 3); // Returns 6.
 let root_p1 = fenny::get_root_p1(slope.len());
-fenny::so_first_larger(&slope, &offset, root_p1, 3); // 3.
+fenny::first_larger_so(&slope, &offset, root_p1, 3); // 3.
 ```
 
 ## Higher dimensions
@@ -104,10 +84,11 @@ z<sub>1</sub>), and increase the weight of all cells in that box in
 one swoop. We could do range updates in 1d with a slope-offset
 construction, anything similar for 3d? Yes there is! Turns out that by
 having one slope per dimension, we can achieve our goal! This is
-similar to an algorithm by
-[Mishra](https://arxiv.org/abs/1311.6093), but we can get away a
-little cheaper by only suppporting lexicographic queries rather than
-arbitrary boxes.
+similar to an algorithm by [Mishra](https://arxiv.org/abs/1311.6093),
+but we can get away a little cheaper by only suppporting lexicographic
+queries rather than arbitrary boxes. During the decoding step it's
+necessary to go from a number in [0, 1) and find the corresponding
+cell. This can be done using `first_larger` function family.
 
 With that background out of the way, let's look at the operations.
 
@@ -122,19 +103,13 @@ let p0 = Point3{z: 3, y: 2, x: 1};
 let p1 = Point3{z: 7, y: 5, x: 5};
 let p2 = Point3{z: 4, y: 0, x: 0};
 // Updates all points q with p0.x<=q.x<=p1.x && p0.y<=q.x<=p1.y && p0.z<=q.x<=p1.z
-so_update_3d_lex(&mut slope_z, &mut slope_y, &mut slope_x, &mut offset, dim, p0, p1, 11);
+update_so_3d_lex(&mut slope_z, &mut slope_y, &mut slope_x, &mut offset, dim, p0, p1, 11);
 // Our points out are laid out in lexicographic order according to z, y, x.
 // Since 4, 0, 0 comes after (3, 2, 1), (3, 2, 2), ... (3, 5, 5) our result is 5 * 4 * 11;
-so_psum_3d_lex(&slope_z, &slope_y, &slope_x, &offset, dim, p2);
+psum_so_3d_lex(&slope_z, &slope_y, &slope_x, &offset, dim, p2);
 ```
 
 These operations run in `log(dim.x) * log (dim.y) * log (dim.z)`
-
-Now wouldn't it be cool if there was a binary search for 3d_lex?
-Too bad, because it's just too complicated. Maybe someday. In the
-meantime wrap `so_psum_3d_lex` with a binary search, for
-`log(dim.x) * log (dim.y) * log (dim.z) * log(dim.x * dim.y * dim.z)`
-time.
 
 ## Acknowledgements
 

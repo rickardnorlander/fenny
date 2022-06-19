@@ -61,7 +61,7 @@ use std::num::Wrapping;
 
 
 
-// Value type
+/// Trait used for all functions in this crate.
 
 pub trait Value :
     Copy
@@ -121,6 +121,8 @@ fn unset_trailing_ones(ind: usize) -> usize {
     return ind & (ind + 1);
 }
 
+
+/// Finds the root index, plus one, for a tree of `size`.
 pub const fn get_root_p1(size: usize) -> usize {
     if size == 0 {
         panic!();
@@ -140,6 +142,7 @@ fn query_inds(ind: usize) -> impl Iterator<Item=usize> {
 
 // Basic Fenwick tree.
 
+/// Computes `sum(a[x])` for `x <= ind`.
 pub fn psum<T: Value>(fenny: &[T], ind: usize) -> T {
     return query_inds(ind).map(|ind| fenny[ind]).sum();
 }
@@ -151,6 +154,7 @@ fn update_inds(ind: usize, fenny_len: usize) -> impl Iterator<Item=usize>  {
     });
 }
 
+/// Updates `a[ind] += val`
 pub fn update<T: Value>(fenny: &mut [T], ind: usize, val: T) {
     for ind in update_inds(ind, fenny.len()) {
         fenny[ind] += val;
@@ -164,10 +168,10 @@ struct BSInds {
 }
 
 impl BSInds {
-    pub fn from_root (root_p1: usize, size: usize) -> Self {
+    fn from_root (root_p1: usize, size: usize) -> Self {
         Self {size, step: root_p1, low_p1: 0}
     }
-    pub fn next(&mut self) -> Option<usize> {
+    fn next(&mut self) -> Option<usize> {
         while self.step > 0 {
             let next = self.low_p1 + self.step - 1;
             self.step /= 2;
@@ -177,12 +181,12 @@ impl BSInds {
         }
         return None;
     }
-    pub fn higher(&mut self) {
+    fn higher(&mut self) {
         self.low_p1 += self.step * 2;
     }
 }
 
-// Finds the smallest ind so that val < arr[i]
+/// Finds the smallest `i` so that `val < a[i]`
 pub fn first_larger<T: Value>(fenny: &[T], root_p1: usize, val: T) -> Option<usize> {
     let mut inds = BSInds::from_root(root_p1, fenny.len());
     let mut result = None;
@@ -203,7 +207,8 @@ pub fn first_larger<T: Value>(fenny: &[T], root_p1: usize, val: T) -> Option<usi
 
 // Slope-offset Fenwick tree.
 
-pub fn so_update<T: Value>(slope: &mut [T], offset: &mut [T], range: std::ops::RangeInclusive<usize>, val: T) {
+/// Updates `a[i..=j] += val`
+pub fn update_so<T: Value>(slope: &mut [T], offset: &mut [T], range: std::ops::RangeInclusive<usize>, val: T) {
     let (start, end) = (*range.start(), *range.end());
     update(slope, start, val);
     update(slope, end, -val);
@@ -211,13 +216,14 @@ pub fn so_update<T: Value>(slope: &mut [T], offset: &mut [T], range: std::ops::R
     update(offset, end,  val * T::from_usize(end));
 }
 
-pub fn so_psum<T: Value>(slope: &[T], offset: &[T], ind: usize) -> T {
+/// Computes `sum(a[x])` for `x <= ind`.
+pub fn psum_so<T: Value>(slope: &[T], offset: &[T], ind: usize) -> T {
     return psum(slope, ind) * T::from_usize(ind) +
            psum(offset, ind);
 }
 
-// Goal, find the smallest ind so that val < arr[i]
-pub fn so_first_larger<T: Value>(f_slope: &[T], f_offset: &[T], root_p1: usize, val: T) -> Option<usize> {
+/// Finds the smallest `i` so that `val < a[i]`
+pub fn first_larger_so<T: Value>(f_slope: &[T], f_offset: &[T], root_p1: usize, val: T) -> Option<usize> {
     let mut inds = BSInds::from_root(root_p1, f_slope.len());
     let mut low_offset = T::default();
     let mut low_slope = T::default();
@@ -241,18 +247,23 @@ pub fn so_first_larger<T: Value>(f_slope: &[T], f_offset: &[T], root_p1: usize, 
 
 // 2d Fenwick trees.
 
+/// The size of a 2d Fenwick tree.
 #[derive(Debug, Copy, Clone)]
 pub struct Dim2 {
     pub x: usize,
     pub y: usize,
 }
 
+/// An index into a 2d array.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Point2 {
     pub x: usize,
     pub y: usize,
 }
 
+/// Computes a 2d-prefix sum.
+///
+/// Sums `a[y][x]` over (y, x) satisfying `y<=p.y && x<=p.x`
 pub fn psum_2d<T: Value>(fenny: &[T], dim: Dim2, p: Point2) -> T {
     let mut ret = T::default();
     for x2 in query_inds(p.x) {
@@ -263,6 +274,7 @@ pub fn psum_2d<T: Value>(fenny: &[T], dim: Dim2, p: Point2) -> T {
     return ret;
 }
 
+/// Updates `a[p.y][p.x] += val`
 pub fn update_2d<T: Value>(fenny: &mut [T], dim: Dim2,  p: Point2, val: T) {
     for x2 in update_inds(p.x, dim.x) {
         for y2 in update_inds(p.y, dim.y) {
@@ -275,7 +287,14 @@ pub fn update_2d<T: Value>(fenny: &mut [T], dim: Dim2,  p: Point2, val: T) {
 
 // 2d slope offset trees.
 
-pub fn so_psum_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, p: Point2) -> T {
+/// Computes a 2d lexicographic prefix sum.
+///
+/// Sums `a[y][x]` over `(y, x)` satisfying
+/// ```no_compile
+/// y < p.y ||
+/// (y == p.y && x<=p.x)
+/// ```
+pub fn psum_so_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, p: Point2) -> T {
     let s_y = psum(f_slope_y, p.y);
     let s_x = psum_2d(f_slope_x, dim, p);
     let o = psum_2d(f_offset, dim, p);
@@ -300,8 +319,9 @@ fn helper_2x<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim2, p: Poin
     update_2d(f_offset, dim, p, offset);
 }
 
-pub fn so_update_2d_lex<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim2,
-                           p0: Point2, p1: Point2, val: T) {
+/// Updates `a[y][x] += val` for all `(y,z) ∈ box(p0, p1)`
+pub fn update_so_2d_lex<T: Value>(f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim2,
+                                  p0: Point2, p1: Point2, val: T) {
     assert!(p0.y <= p1.y && p1.y < dim.y);
     assert!(p0.x <= p1.x && p1.x < dim.x);
     let strip_value = val * T::from_usize(p1.x - p0.x + 1);
@@ -323,7 +343,8 @@ fn marginalize_out_y<T: Value>(fenny: &[T], dim: Dim2, y: usize, x: usize) -> T 
     return psum(&fenny[x*dim.y..], y);
 }
 
-pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, val: T) -> Option<Point2> {
+/// Finds the lexicographically first `(y, x)` such that `val < a[y][x]`
+pub fn first_larger_so_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim2, val: T) -> Option<Point2> {
     assert!(dim.x > 0 && dim.y > 0);
     let root_y_p1 = get_root_p1(dim.y);
     let mut yinds = BSInds::from_root(root_y_p1, dim.y);
@@ -377,6 +398,7 @@ pub fn so_first_larger_2d_lex<T: Value>(f_slope_y: &[T], f_slope_x: &[T], f_offs
 
 // 3d Fenwick trees.
 
+/// The size of a 3d Fenwick tree.
 #[derive(Debug, Copy, Clone)]
 pub struct Dim3 {
     pub x: usize,
@@ -384,6 +406,7 @@ pub struct Dim3 {
     pub z: usize,
 }
 
+/// An index into a 3d array.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Point3 {
     pub x: usize,
@@ -392,6 +415,7 @@ pub struct Point3 {
 }
 
 
+/// Updates `a[p.z][p.y][p.x] += val`.
 pub fn update_3d<T: Value>(fenny: &mut [T], dim: Dim3, p: Point3, val: T) {
     for x in update_inds(p.x, dim.x) {
         for y in update_inds(p.y, dim.y) {
@@ -402,6 +426,9 @@ pub fn update_3d<T: Value>(fenny: &mut [T], dim: Dim3, p: Point3, val: T) {
     }
 }
 
+/// Computes a 3d-prefix sum.
+///
+/// Sums `a[z][y][x]` over (y, x) satisfying `z<=p.z && y<=p.y && x<=p.x
 pub fn psum_3d<T: Value>(fenny: &[T], dim: Dim3, p: Point3) -> T {
     let mut ret = T::default();
     for x in query_inds(p.x) {
@@ -418,7 +445,15 @@ pub fn psum_3d<T: Value>(fenny: &[T], dim: Dim3, p: Point3) -> T {
 
 // 3d slope offset trees.
 
-pub fn so_psum_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, p: Point3) -> T {
+/// Computes a 3d lexicographic prefix sum.
+///
+/// Sums `a[z][y][x]` over `(z, y, x)` satisfying
+/// ```no_compile
+/// z < p.z ||
+/// (z == p.z && y < p.y) ||
+/// (z == p.z && y == p.y && x <= p.x)
+/// ```
+pub fn psum_so_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, p: Point3) -> T {
     let s_z = psum(f_slope_z, p.z);
     let s_y = psum_2d(f_slope_y, Dim2{y:dim.z,x:dim.y}, Point2{y:p.z,x:p.y});
     let s_x = psum_3d(f_slope_x, dim, p);
@@ -452,7 +487,8 @@ fn helper_3x<T: Value>(f_slope: &mut [T], f_offset: &mut [T], dim: Dim3, p: Poin
     update_3d(f_offset, dim, p, offset);
 }
 
-pub fn so_update_3d_lex<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim3, p0: Point3, p1: Point3, val: T) {
+/// Updates `a[z][y][x] += val` for all `(z,y,z) ∈ box(p0, p1)`
+pub fn update_so_3d_lex<T: Value>(f_slope_z: &mut [T], f_slope_y: &mut [T], f_slope_x: &mut [T], f_offset: &mut [T], dim: Dim3, p0: Point3, p1: Point3, val: T) {
     assert!(p0.z <= p1.z && p1.z < dim.z);
     assert!(p0.y <= p1.y && p1.y < dim.y);
     assert!(p0.x <= p1.x && p1.x < dim.x);
@@ -502,8 +538,8 @@ fn marginalize_out_zy<T: Value>(fenny: &[T], dim: Dim3, z: usize, y: usize, x: u
     return psum_2d(&fenny[x * dim.z * dim.y..], Dim2{y: dim.z, x: dim.y}, Point2{y: z, x: y});
 }
 
-
-pub fn so_first_larger_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, val: T) -> Option<Point3> {
+/// Finds the lexicographically first `(z, y, x)` such that `val < a[z][y][x]`
+pub fn first_larger_so_3d_lex<T: Value>(f_slope_z: &[T], f_slope_y: &[T], f_slope_x: &[T], f_offset: &[T], dim: Dim3, val: T) -> Option<Point3> {
     assert!(dim.x > 0 && dim.y > 0 && dim.z > 0);
     let root_z_p1 = get_root_p1(dim.z);
     let mut zinds = BSInds::from_root(root_z_p1, dim.z);
