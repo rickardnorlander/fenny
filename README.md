@@ -107,6 +107,8 @@ update_so_3d_lex(&mut slope_z, &mut slope_y, &mut slope_x, &mut offset, dim, p0,
 // Our points out are laid out in lexicographic order according to z, y, x.
 // Since 4, 0, 0 comes after (3, 2, 1), (3, 2, 2), ... (3, 5, 5) our result is 5 * 4 * 11;
 psum_so_3d_lex(&slope_z, &slope_y, &slope_x, &offset, dim, p2);
+// (4, 0, 0) has a psum of 5*4*11, but so does (3, 5, 5), so that's the result.
+first_larger_so_3d_lex(&slope_z, &slope_y, &slope_x, &offset, dim, 5 * 4 * 11 - 1);
 ```
 
 These operations run in `log(dim.x) * log (dim.y) * log (dim.z)`
